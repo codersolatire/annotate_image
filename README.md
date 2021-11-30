@@ -3,7 +3,7 @@
 How To Setup
 
 1. Create a VirtualEnv with python3
-2. Install Django
+2. Install Django - pip install django
 3. Run the command 
     i. python manage.py makemigrations
     ii. python manage.py migrate
