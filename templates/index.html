@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annotation</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <!-- Popper JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- <script src="/static/annotorious-2.6.0/annotorious.min.js"></script> -->
+
+    <!-- CSS stylesheet -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious@2.6.0/dist/annotorious.min.css">
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious@2.6.0/dist/annotorious.min.js"></script>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@recogito/firebase-storage@latest/dist/recogito-firebase-storage.min.js"></script>
+
+    <!-- <script src="/static/anno-autocomplete-dropdown-plugin.js"></script> -->
+</head>
+<body>
+
+    <div id="annotateimageModal" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+      
+          <!-- Modal content-->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Annotate Image</h4>
+                </div>
+                
+                <div class="modal-body">
+                    <img src="" id="image_to_anotate" alt="" style="height: 20em;">
+
+                    <button class="btn btn-primary" onclick="downloadCSV()">Download CSV</button>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+      
+        </div>
+    </div>
+
+      
+    <div class="container-fluid p-3" style="background-color: rgb(110, 110, 110);">
+        SmartCow Task
+    </div>
+
+    <div class="container-fluid">
+        <div class="row m-5">
+            <div class="col-md-12">
+                <h4>Images</h4>
+            </div>
+
+            <div class="col-md-12">
+                <form id="upload_image_form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" name="traffic_images" id="traffic_images" onchange="displayUploadImages(this)" multiple hidden>
+
+                    <input type="button" class="btn btn-primary" onclick="uploadImage()" value="Click here to browse and upload images">
+                </form>
+            </div>
+
+            <div class="col-md-12" style="margin-top: 3em;">
+                {% for i in images_data %}
+                    <img src="{{i.image}}" id="image{{forloop.counter}}" style="height: 20em;" onclick="annotateImage(this)" />
+                {% endfor %}
+            </div>
+
+            <div class="col-md-12 m-5" id="uploaded_images_display">
+
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.5.0/firebase-app.js";
+    </script>
+
+    <script type="text/javascript">
+        function uploadImage(){
+            document.getElementById("traffic_images").click()
+        }
+
+        function displayUploadImages(resp){
+            a = resp.files
+
+            for(var i=0;i<document.getElementById("uploaded_images_display").children.length;i++){
+                document.getElementById("uploaded_images_display").children[i].remove()
+            }
+
+
+            for(var i=0;i<resp.files.length;i++){
+                var img_ele = document.createElement("img")
+                img_ele.src = URL.createObjectURL(resp.files[i])
+                img_ele.style.height = "15em"
+                img_ele.style.marginRight = "2em"
+                document.getElementById("uploaded_images_display").appendChild(img_ele)
+            }
+
+            document.getElementById("uploaded_images_display").appendChild(document.createElement("br"))
+
+            var img_upload_btn = document.createElement("button")
+            img_upload_btn.setAttribute('onclick','uploadImagesToServer()')
+            img_upload_btn.setAttribute('class','btn btn-success')
+            img_upload_btn.style.marginTop="2em"
+            img_upload_btn.innerHTML = "Upload"
+            document.getElementById("uploaded_images_display").appendChild(img_upload_btn)
+        }
+
+        function uploadImagesToServer(){
+
+            a = document.getElementById("traffic_images").files
+
+            var formData = new FormData($('#upload_image_form').get(0));
+
+            $.ajax({
+                url: "/",
+                type:"POST",
+                headers: { "X-CSRFToken": '{{ csrf_token }}' },
+                processData: false,
+                contentType: false,
+                data: formData,
+                success: function(data) {
+                    if(data == "200"){
+                        Swal.fire(
+                            'Good job!',
+                            'Images Uploaded Successfully...',
+                            'success'
+                        )
+                    }
+                }
+            });
+        }
+
+        function annotateImage(resp){
+            document.getElementById("image_to_anotate").src = resp.src
+            $("#annotateimageModal").modal('show')
+
+            image_annotate_data = []
+
+            var anno = Annotorious.init({
+                image: document.getElementById("image_to_anotate"),
+                widgets: [{ 
+                    widget: 'TAG',
+                    vocabulary: [ 
+                        { label: 'Car' },
+                        { label: 'Bus' }, 
+                        { label: 'Auto Rickshaw' },
+                        { label: 'Bike' }
+                    ] 
+                }]
+            });
+
+            anno.on('createAnnotation', function(annotation, overrideId) {
+                // image_annotate_data[annotation.id] = {'url':document.getElementById("image_to_anotate").src,"tag":annotation.body[0].value,"value":annotation.target.selector.value.split(':')[1]}
+
+                image_annotate_data.push({'url':document.getElementById("image_to_anotate").src,"tag":annotation.body[0].value,"value":annotation.target.selector.value.split(':')[1]})
+            });
+
+            // anno.on('updateAnnotation', function(selected, previous) {
+            //     image_annotate_data[previous.id] = {'url':document.getElementById("image_to_anotate").src,"tag":selected.body[0].value,"value":selected.target.selector.value.split(':')[1]}
+            // });
+        }
+
+        function convertToCSV(objArray) {
+            var array = typeof objArray != 'object' ? JSON.parse(objArray) : objArray;
+            var str = '';
+
+            for (var i = 0; i < array.length; i++) {
+                var line = '';
+                for (var index in array[i]) {
+                    if (line != '') line += ','
+
+                    line += array[i][index];
+                }
+
+                str += line + '\r\n';
+            }
+
+            return str;
+        }
+
+
+        function downloadCSV() {
+            var fileTitle = "data"
+
+            var jsonObject = JSON.stringify(image_annotate_data);
+
+            var csv = convertToCSV(jsonObject);
+
+            var exportedFilenmae = fileTitle + '.csv' || 'export.csv';
+
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            if (navigator.msSaveBlob) { // IE 10+
+                navigator.msSaveBlob(blob, exportedFilenmae);
+            } else {
+                var link = document.createElement("a");
+                if (link.download !== undefined) { // feature detection
+                    // Browsers that support HTML5 download attribute
+                    var url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", exportedFilenmae);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+        }
+    </script>    
+</body>
+</html>
