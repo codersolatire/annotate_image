@@ -1,4 +1,4 @@
-# annotate_image
+# Annotate Image
 
 How To Setup
 
