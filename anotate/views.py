@@ -54,3 +54,9 @@ def login(request):
             return redirect(login)
     else:
         return render(request, 'login.html',{})
+
+def logout(request):
+    if 'user_id' in request.session:
+        del request.session['user_id']
+    
+    return redirect(login)
